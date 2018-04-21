@@ -25,6 +25,7 @@ namespace UniversalObjExplorerNameSpace
     [OnGameInit]
     public class ObjectExplorer : SingleInstance<ObjectExplorer>
     {
+        public int UpdateRate = 1000;
         public override string Name
         {
             get { return "Object Explorer"; }
@@ -51,9 +52,10 @@ namespace UniversalObjExplorerNameSpace
 
         private void Update()
         {
-            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKey(KeyCode.O))
+            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.O))
             {
                 IsVisible = !IsVisible;
+                HierarchyPanel.UpdateRate = UpdateRate;
             }
         }
 
@@ -84,6 +86,7 @@ namespace UniversalObjExplorerNameSpace
     [OnGameInit]
     public class HierarchyPanel : MonoBehaviour
     {
+        public int UpdateRate = 1000;
         private const string SEARCH_FIELD_NAME = "search_field";
         private const string SEARCH_FIELD_DEFAULT = "Search";
 
@@ -112,7 +115,7 @@ namespace UniversalObjExplorerNameSpace
         private void FixedUpdate()
         {
             ++i;
-            if (i >= 50)
+            if (i >= UpdateRate)
             {
                 RefreshGameObjectList();
                 i = 0;
@@ -132,10 +135,11 @@ namespace UniversalObjExplorerNameSpace
         {
             while (shouldUpdate)
             {
-                yield return new WaitForSeconds(0.5f);
+                yield return new WaitForSeconds(2f);
                 if (ObjectExplorer.Instance.IsVisible)
                 {
-                    RefreshGameObjectList();
+                    //RefreshGameObjectList();
+                    Debug.Log("Update?");
                 }
             }
         }
