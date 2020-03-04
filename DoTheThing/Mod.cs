@@ -52,7 +52,7 @@ namespace UniversalObjExplorerNameSpace
 
         private void Update()
         {
-            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.O))
+            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyUp(KeyCode.O))
             {
                 IsVisible = !IsVisible;
                 HierarchyPanel.UpdateRate = UpdateRate;
@@ -86,9 +86,9 @@ namespace UniversalObjExplorerNameSpace
     [OnGameInit]
     public class HierarchyPanel : MonoBehaviour
     {
-        public int UpdateRate = 1000;
+        public int UpdateRate = 100;
         private const string SEARCH_FIELD_NAME = "search_field";
-        private const string SEARCH_FIELD_DEFAULT = "Search";
+        private const string SEARCH_FIELD_DEFAULT = "Search with gameobject name";
 
         private HashSet<HierarchyEntry> inspectorEntries
           = new HashSet<HierarchyEntry>();
@@ -114,7 +114,9 @@ namespace UniversalObjExplorerNameSpace
         int i = 0;
         private void FixedUpdate()
         {
+
             ++i;
+            return;
             if (i >= UpdateRate)
             {
                 RefreshGameObjectList();
@@ -139,90 +141,97 @@ namespace UniversalObjExplorerNameSpace
                 if (ObjectExplorer.Instance.IsVisible)
                 {
                     //RefreshGameObjectList();
-                    Debug.Log("Update?");
                 }
             }
         }
 
         public void Display()
         {
-            GUILayout.BeginVertical();
-
-            #region Buttons
-            GUILayout.BeginHorizontal(
-              GUILayout.Width(Elements.Settings.HierarchyPanelWidth));
-
-            // Search field
-            // Set the name of the  search field so we can later detect if it's in focus
-            GUI.SetNextControlName(SEARCH_FIELD_NAME);
-            const int SEARCH_FIELD_WIDTH = 160;
-            var oldSearchText = searchFieldText;
-            searchFieldText = GUILayout.TextField(oldSearchText,
-              Elements.InputFields.ThinNoTopBotMargin,
-              GUILayout.Width(SEARCH_FIELD_WIDTH));
-            if (oldSearchText != searchFieldText)
+            try
             {
-                RefreshSearchList();
-            }
+                GUILayout.BeginVertical();
 
-            // Expand/collapse all entries button
-            bool allCollapsed = AreAllCollapsed(inspectorEntries);
-            const int BUTTON_COLLAPSE_WIDTH = 90;
-            if (GUILayout.Button(allCollapsed ? "Expand All" : "Collapse All",
-              Elements.Buttons.ThinNoTopBotMargin, GUILayout.Width(BUTTON_COLLAPSE_WIDTH)))
-            {
-                if (allCollapsed)
+                #region Buttons
+                GUILayout.BeginHorizontal(
+                  GUILayout.Width(Elements.Settings.HierarchyPanelWidth));
+
+                // Search field
+                // Set the name of the  search field so we can later detect if it's in focus
+                GUI.SetNextControlName(SEARCH_FIELD_NAME);
+                const int SEARCH_FIELD_WIDTH = 160;
+                var oldSearchText = searchFieldText;
+                searchFieldText = GUILayout.TextField(oldSearchText,
+                  Elements.InputFields.ThinNoTopBotMargin,
+                  GUILayout.Width(SEARCH_FIELD_WIDTH));
+                if (oldSearchText != searchFieldText)
                 {
+                    RefreshSearchList();
                     ExpandAll(inspectorEntries);
                 }
-                else
-                {
-                    CollapseAll(inspectorEntries);
-                }
-            }
 
-            // Refresh list button
-            if (GUILayout.Button("Refresh", Elements.Buttons.ThinNoTopBotMargin))
-            {
-                RefreshGameObjectList();
-            }
-
-            // Only during repaint, to avoid errors
-            if (Event.current.type == EventType.Repaint)
-            {
-                // If the current focused control is the search textfield
-                if (GUI.GetNameOfFocusedControl() == SEARCH_FIELD_NAME)
+                // Expand/collapse all entries button
+                bool allCollapsed = AreAllCollapsed(inspectorEntries);
+                const int BUTTON_COLLAPSE_WIDTH = 90;
+                if (GUILayout.Button(allCollapsed ? "Expand All" : "Collapse All",
+                  Elements.Buttons.ThinNoTopBotMargin, GUILayout.Width(BUTTON_COLLAPSE_WIDTH)))
                 {
-                    // Clear the default value
-                    if (searchFieldText == SEARCH_FIELD_DEFAULT)
+                    if (allCollapsed)
                     {
-                        isSearching = true;
-                        searchFieldText = "";
-                        RefreshSearchList();
+                        ExpandAll(inspectorEntries);
+                    }
+                    else
+                    {
+                        CollapseAll(inspectorEntries);
                     }
                 }
-                else
+
+                // Refresh list button
+                if (GUILayout.Button("Refresh", Elements.Buttons.ThinNoTopBotMargin))
                 {
-                    // If searchfield is not in focus and it is empty, restore default text
-                    if (searchFieldText.Length < 1)
+                    RefreshGameObjectList();
+                }
+
+                // Only during repaint, to avoid errors
+                if (Event.current.type == EventType.Repaint)
+                {
+                    // If the current focused control is the search textfield
+                    if (GUI.GetNameOfFocusedControl() == SEARCH_FIELD_NAME)
                     {
-                        isSearching = false;
-                        searchFieldText = SEARCH_FIELD_DEFAULT;
+                        // Clear the default value
+                        if (searchFieldText == SEARCH_FIELD_DEFAULT)
+                        {
+                            isSearching = true;
+                            searchFieldText = "";
+                            RefreshSearchList();
+                        }
+                    }
+                    else
+                    {
+                        // If searchfield is not in focus and it is empty, restore default text
+                        if (searchFieldText.Length < 1)
+                        {
+                            isSearching = false;
+                            searchFieldText = SEARCH_FIELD_DEFAULT;
+                        }
                     }
                 }
+
+                GUILayout.EndHorizontal();
+                #endregion
+
+                hierarchyScroll = GUILayout.BeginScrollView(hierarchyScroll, false, true,
+                  GUILayout.Width(Elements.Settings.HierarchyPanelWidth));
+
+                DoShowEntries(inspectorEntries);
+
+                GUILayout.EndScrollView();
+
+                GUILayout.EndVertical();
             }
-
-            GUILayout.EndHorizontal();
-            #endregion
-
-            hierarchyScroll = GUILayout.BeginScrollView(hierarchyScroll, false, true,
-              GUILayout.Width(Elements.Settings.HierarchyPanelWidth));
-
-            DoShowEntries(inspectorEntries);
-
-            GUILayout.EndScrollView();
-
-            GUILayout.EndVertical();
+            catch
+            {
+                BesiegeConsoleController.ShowMessage("aye! " + UpdateRate + " " + i);
+            }
         }
 
         private bool AreAllCollapsed(IEnumerable<HierarchyEntry> entries)
@@ -310,6 +319,7 @@ namespace UniversalObjExplorerNameSpace
 
         public void RefreshGameObjectList()
         {
+            if (!ObjectExplorer.Instance.IsVisible) return;
             var newEntries = new HashSet<HierarchyEntry>();
             foreach (var transform in FindObjectsOfType<Transform>())
             {
@@ -382,6 +392,7 @@ namespace UniversalObjExplorerNameSpace
     [OnGameInit]
     public class InspectorPanel : MonoBehaviour
     {
+        int i = 0;
         enum FieldType
         {
             Normal, VectorX, VectorY, VectorZ, ColorR, ColorG, ColorB, ColorA
@@ -536,89 +547,97 @@ namespace UniversalObjExplorerNameSpace
         private bool tagExpanded, layerExpanded;
         public void Display()
         {
-            float panelWidth = Elements.Settings.InspectorPanelWidth;
-
-            GUILayout.BeginHorizontal(GUILayout.Width(panelWidth),
-              GUILayout.ExpandWidth(false));
-
-            GUILayout.BeginVertical();
-
-            if (IsGameObjectSelected)
+            try
             {
-                // Text field to change game object's name
-                SelectedGameObject.name = GUILayout.TextField(SelectedGameObject.name,
-                  Elements.InputFields.ThinNoTopBotMargin, GUILayout.Width(panelWidth),
+                float panelWidth = Elements.Settings.InspectorPanelWidth;
+
+                GUILayout.BeginHorizontal(GUILayout.Width(panelWidth),
                   GUILayout.ExpandWidth(false));
-            }
-            else
-            {
-                GUILayout.TextField("Select a game object in the hierarchy",
-                  Elements.InputFields.ThinNoTopBotMargin, GUILayout.Width(panelWidth),
-                  GUILayout.ExpandWidth(false));
-            }
 
-            inspectorScroll = GUILayout.BeginScrollView(inspectorScroll,
-              GUILayout.Width(panelWidth), GUILayout.ExpandWidth(false));
+                GUILayout.BeginVertical();
 
-            if (IsGameObjectSelected)
-            {
-                GUILayout.BeginHorizontal();
-                if (Elements.Tools.DoCollapseArrow(tagExpanded, false))
-                    tagExpanded = !tagExpanded;
-                GUILayout.Label("Tag: " + SelectedGameObject.tag,
-                  Elements.Labels.LogEntry, GUILayout.ExpandWidth(false));
-                GUILayout.EndHorizontal();
-
-                GUILayout.BeginHorizontal();
-                if (Elements.Tools.DoCollapseArrow(layerExpanded))
-                    layerExpanded = !layerExpanded;
-                GUILayout.Label("Layer: " + SelectedGameObject.layer,
-                  Elements.Labels.LogEntry, GUILayout.ExpandWidth(false));
-                GUILayout.EndHorizontal();
-
-                if (layerExpanded)
+                if (IsGameObjectSelected)
                 {
-                    if (layerTextInputActive)
+                    // Text field to change game object's name
+                    SelectedGameObject.name = GUILayout.TextField(SelectedGameObject.name,
+                      Elements.InputFields.ThinNoTopBotMargin, GUILayout.Width(panelWidth),
+                      GUILayout.ExpandWidth(false));
+                }
+                else
+                {
+                    GUILayout.TextField("Select a game object in the hierarchy",
+                      Elements.InputFields.ThinNoTopBotMargin, GUILayout.Width(panelWidth),
+                      GUILayout.ExpandWidth(false));
+                }
+
+                inspectorScroll = GUILayout.BeginScrollView(inspectorScroll,
+                  GUILayout.Width(panelWidth), GUILayout.ExpandWidth(false));
+
+                if (IsGameObjectSelected)
+                {
+                    GUILayout.BeginHorizontal();
+                    if (Elements.Tools.DoCollapseArrow(tagExpanded, false))
+                        tagExpanded = !tagExpanded;
+                    GUILayout.Label("Tag: " + SelectedGameObject.tag,
+                      Elements.Labels.LogEntry, GUILayout.ExpandWidth(false));
+                    GUILayout.EndHorizontal();
+
+                    GUILayout.BeginHorizontal();
+                    if (Elements.Tools.DoCollapseArrow(layerExpanded))
+                        layerExpanded = !layerExpanded;
+                    GUILayout.Label("Layer: " + SelectedGameObject.layer,
+                      Elements.Labels.LogEntry, GUILayout.ExpandWidth(false));
+                    GUILayout.EndHorizontal();
+
+                    if (layerExpanded)
                     {
-                        layerTextInputNewValue = GUILayout.TextField(
-                          layerTextInputNewValue, Elements.InputFields.ComponentField);
-                    }
-                    else
-                    {
-                        string newLayer = GUILayout.TextField(
-                          SelectedGameObject.layer.ToString(),
-                          Elements.InputFields.ComponentField);
-                        if (newLayer != SelectedGameObject.layer.ToString())
+                        if (layerTextInputActive)
                         {
-                            layerTextInputActive = true;
-                            layerTextInputNewValue = newLayer;
+                            layerTextInputNewValue = GUILayout.TextField(
+                              layerTextInputNewValue, Elements.InputFields.ComponentField);
+                        }
+                        else
+                        {
+                            string newLayer = GUILayout.TextField(
+                              SelectedGameObject.layer.ToString(),
+                              Elements.InputFields.ComponentField);
+                            if (newLayer != SelectedGameObject.layer.ToString())
+                            {
+                                layerTextInputActive = true;
+                                layerTextInputNewValue = newLayer;
+                            }
                         }
                     }
                 }
-            }
 
-            GUILayout.Label("Components:", Elements.Labels.Title);
+                GUILayout.Label("Components:", Elements.Labels.Title);
 
-            foreach (var entry in new HashSet<ComponentEntry>(entries))
-            {
-                if (entry.Component == null)
+                foreach (var entry in new HashSet<ComponentEntry>(entries))
                 {
-                    entries.Remove(entry);
-                    continue;
+                    if (entry.Component == null)
+                    {
+                        entries.Remove(entry);
+                        continue;
+                    }
+                    DisplayComponent(entry);
                 }
-                DisplayComponent(entry);
+
+                GUILayout.EndScrollView();
+
+                GUILayout.EndVertical();
+
+                GUILayout.BeginVertical();
+                DisplayFilters();
+                DisplayUtilityButtons();
+                GUILayout.EndVertical();
+
+                GUILayout.EndHorizontal();
             }
-
-            GUILayout.EndScrollView();
-
-            GUILayout.EndVertical();
-
-            GUILayout.BeginVertical();
-            DisplayFilters();
-            DisplayUtilityButtons();
-            GUILayout.EndVertical();
-
-            GUILayout.EndHorizontal();
+            catch
+            {
+                BesiegeConsoleController.ShowMessage("DoTheThing-bye!" + i);
+                ++i;
+            }
         }
 
         private void DisplayFilters()
@@ -641,7 +660,7 @@ namespace UniversalObjExplorerNameSpace
 
             if (GUILayout.Button("Destroy"))
             {
-                Destroy(SelectedGameObject);
+                DestroyImmediate(SelectedGameObject);
             }
             if (GUILayout.Button("Focus"))
             {
@@ -655,6 +674,10 @@ namespace UniversalObjExplorerNameSpace
                 if (mo != null && mo.target != null)
                 {
                     SelectedGameObject = mo.target.gameObject;
+                    if (SelectedGameObject.GetComponent<MeshRenderer>())
+                    {
+                        BesiegeConsoleController.ShowMessage(SelectedGameObject.GetComponent<MeshRenderer>().material.shader.name);
+                    }
                 }
             }
         }
@@ -672,8 +695,12 @@ namespace UniversalObjExplorerNameSpace
 
             if (entry.IsExpanded)
             {
-                ShowFields("Properties", entry.Properties);
-                ShowFields("Fields", entry.Fields);
+                try
+                {
+                    ShowFields("Properties", entry.Properties);
+                    ShowFields("Fields", entry.Fields);
+                }
+                catch(Exception e) { BesiegeConsoleController.ShowMessage(e.ToString()); }
             }
         }
 
